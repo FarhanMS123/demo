@@ -123,11 +123,12 @@
 					(function(x){
 						var x = x;
 						var y = cv.height - (cv.height/3);
-						if(x==0){
-							ctx_cv.clearRect(0,0,cv.width,cv.height);
-							data.dtnow = [];
-						}
+						
 						setTimeout(function(){
+							if(x==0){
+								ctx_cv.clearRect(0,0,cv.width,cv.height);
+								data.dtnow = [];
+							}
 							var dtimg = ctx_ccam.getImageData(x,y,1,1);
 							var frm = [
 								       x-1 < 0 ? false : ctx_ccam.getImageData(x-1,y,1,1),
