@@ -6,7 +6,7 @@
 		
 	</head>
 	<body>
-		<h3>In Progress task 1 for 70% complete of 3 tasks</h3>
+		<h3>In Progress task 1 for 78% complete of 3 tasks</h3>
 		<div id="control1"></div>
 		<div id="cam" style="margin:1em 0em;">
 			<div style="width:100%;max-width:10em;float:left;position:relative;">
@@ -22,27 +22,29 @@
 				<canvas id="cv"></canvas>
 			</div>
 		</div>
-		<table style="width:100%">
+		<table style="width:100%;width:100%;">
 			<tr>
-				<td style="width:10em;">Base</td>
-				<td><input type="color" id="colbase"></input></td>
+				<td style="min-width:20%;">Base</td>
+				<td style="max-width:80%;"><input type="color" id="colbase"></input></td>
 			</tr>
 			<tr>
-				<td style="width:10em;">Count (now)</td>
-				<td>xyz</td>
+				<td style="min-width:20%;">Count (now)</td>
+				<td style="max-width:80%;">xyz</td>
 			</tr>
 			<tr>
-				<td style="width:10em;">Count (begin)</td>
-				<td>xyz</td>
+				<td style="min-width:20%;">Count (begin)</td>
+				<td style="max-width:80%;">xyz</td>
 			</tr>
 			<tr>
-				<td style="width:10em;">Data (JSON)</td>
-				<td>...</td>
+				<td style="min-width:20%;">Data (JSON)</td>
+				<td style="max-width:80%;">
+					<p id="dt" style="word-wrap: break-word;width:12em;"></p>
+				</td>
 			</tr>
 		</table>
 		
 		<script>
-			var _cam, pro, ctx_ccam, ctx_cv, data=[];
+			var _cam, pro, ctx_ccam, ctx_cv, data={};
 			navigator.mediaDevices.enumerateDevices().then(function(dev){
 				_cam = dev;
 				for(i in dev){
@@ -66,6 +68,7 @@
 				cv.style.width = ccam.style.width
 				cv.style.height = ccam.style.height
 				main();
+				dt.innerHTML = JSON.stringify(data);
 			},100);
 			
 			function hex2HSL(hex) {
@@ -98,14 +101,12 @@
 				return (r.length == 1 ? "0" : "") + r + (g.length == 1 ? "0" : "") + g + (b.length == 1 ? "0" : "") + b
 			}
 			
-			function colDifHSL(hex1, hex2){
-				var hsl1 = hex2HSL(hex1), hsl2 = hex2HSL(hex2);
-				var l = Math.abs((hsl2.l - hsl1.l));
-				var s = Math.abs((hsl2.s - hsl1.s));
-				var h = Math.abs((hsl2.h - hsl1.h)) * 360;
-				h = (h <= 120 ? (h*10/360) : h <= 240 ? (h*5/360) : h <= 360 ? ((360-h)*10/360) : h/360)/(10/6);
-				
-				return [h,s,l];
+			function colDifRGB(hex1, hex2){
+				var res1 = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex1);
+				var res2 = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex2);
+				res1[1] = parseInt(res1[1], 16); res1[2] = parseInt(res1[2], 16); res1[3] = parseInt(res1[3], 16);
+				res2[1] = parseInt(res2[1], 16); res2[2] = parseInt(res2[2], 16); res2[3] = parseInt(res2[3], 16);
+				return [((res1[1]-res2[1])/255), ((res1[2]-res2[2])/255), ((res1[3]-res2[3])/255)];
 			}
 			
 			function getY(x, x1, y1, x2, y2){
@@ -122,7 +123,10 @@
 					(function(x){
 						var x = x;
 						var y = cv.height - (cv.height/3);
-						if(x-1 <= -1) data = [];
+						if(x==0){
+							ctx_cv.clearRect(0,0,cv.width,cv.height);
+							data.dtnow = [];
+						}
 						setTimeout(function(){
 							var dtimg = ctx_ccam.getImageData(x,y,1,1);
 							var frm = [
@@ -130,38 +134,27 @@
 								                         ctx_ccam.getImageData(x,y,1,1),
 								x+1 > cv.width ? false : ctx_ccam.getImageData(x+1,y,1,1)
 							]
-							var hex = [
+							/*var hex = [
 								frm[0] != false ? rgb2hex(frm[0].data[0], frm[0].data[1], frm[0].data[2]) : false,
 								frm[0] != false ? rgb2hex(frm[1].data[0], frm[1].data[1], frm[1].data[2]) : false,
 								frm[0] != false ? rgb2hex(frm[2].data[0], frm[2].data[1], frm[2].data[2]) : false,
-							];
-							
-							ctx_cv.beginPath();
-							ctx_cv.rect(x, y, 1, 1);
-							ctx_cv.fillStyle = `rgba(${dtimg.data[0]}, ${dtimg.data[1]}, ${dtimg.data[2]}, ${dtimg.data[3]/255})`;
-							ctx_cv.fill();
+							];*/
+							var hex = rgb2hex(frm[1].data[0], frm[1].data[1], frm[1].data[2]);
 							
 							//console.log([colbase.value.slice(1), hex[1]])
+							var d1 = colDifRGB(colbase.value.slice(1), hex);
+							d1[0] = Math.abs(d1[0]); d1[1] = Math.abs(d1[1]); d1[2] = Math.abs(d1[2]);
+							if(d1[0] >= 0.6 || d1[1] >= 0.6 || d1[2] >= 0.6){
+								ctx_cv.beginPath();
+								ctx_cv.rect(x, y, 1, 1);
+								ctx_cv.fillStyle = `rgba(${dtimg.data[0]}, ${dtimg.data[1]}, ${dtimg.data[2]}, ${dtimg.data[3]/255})`;
+								ctx_cv.fill();
+								if (typeof data.dtnow !== "object") data.dtnow = [];
+								
+								data.dtnow.push([hex, x]);
+							}
 							
-							var d1 = colDifHSL(colbase.value.slice(1), hex[1]);
-							console.log(d1);
-							//data.push()
-							
-							/*var d1 = hex[0]==false || hex[1]==false ? false : colDifHSL(hex[0], hex[1]);
-							var d2 = hex[1]==false || hex[2]==false ? false : colDifHSL(hex[1], hex[2]);
-							
-							if(d1!=false){
-								var i = data[data.length-1][1] == false ? data.length-1 : data.length;
-								data[i] = data[i] == undefined ? [false, false] : data[i];
-								var _b = false;
-								if(d1.h >= 0.5 || d1.s >= 0.8 || d1.l >= 0.6 || d2.h >= 0.5 || d2.s >= 0.8 || d2.l >= 0.6){
-									if(data[i][0] == false){
-										data[i][0] = x;
-									}else{
-										data[i][1] = x;
-									}
-								}
-							}*/
+							data.analysis = d1;
 						}, 1);
 					})(x)
 				}
